@@ -8,9 +8,14 @@ dist/
 data/
 outputs/
 docs/
+src/
+tests/
+pyproject.toml
 *.aux
 *.blg
 *.log
 *.out
 *.synctex.gz
 .DS_Store
+
+paper/figures/*.py
