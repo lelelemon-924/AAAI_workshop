@@ -1,0 +1,127 @@
+\begin{thebibliography}{20}
+\providecommand{\natexlab}[1]{#1}
+
+\bibitem[{Bharadwaj et~al.(2026)Bharadwaj, Malaviya, Joshi, and
+  Yatskar}]{bharadwaj2026flattery}
+Bharadwaj, A.; Malaviya, C.; Joshi, N.; and Yatskar, M. 2026.
+\newblock Flattery, Fluff, and Fog: Diagnosing and Mitigating Idiosyncratic
+  Biases in Preference Models.
+\newblock In \emph{International Conference on Learning Representations}.
+
+\bibitem[{Brier(1950)}]{brier1950verification}
+Brier, G.~W. 1950.
+\newblock Verification of Forecasts Expressed in Terms of Probability.
+\newblock \emph{Monthly Weather Review}, 78(1): 1--3.
+
+\bibitem[{Das and Dennis(1997)}]{das1997closer}
+Das, I.; and Dennis, J.~E. 1997.
+\newblock A Closer Look at Drawbacks of Minimizing Weighted Sums of Objectives
+  for {P}areto Set Generation in Multicriteria Optimization Problems.
+\newblock \emph{Structural Optimization}, 14(1): 63--69.
+
+\bibitem[{Deu{\ss}er et~al.(2026)Deu{\ss}er, Ramamurthy, Sparrenberg, and
+  Sifa}]{deusser2026jevbench}
+Deu{\ss}er, T.; Ramamurthy, R.; Sparrenberg, L.; and Sifa, R. 2026.
+\newblock Evaluating and Benchmarking the System One Model {J}ev.
+\newblock \emph{arXiv preprint arXiv:2609.37647}.
+
+\bibitem[{Ganin and Lempitsky(2015)}]{ganin2015unsupervised}
+Ganin, Y.; and Lempitsky, V. 2015.
+\newblock Unsupervised Domain Adaptation by Backpropagation.
+\newblock In \emph{International Conference on Machine Learning}.
+
+\bibitem[{Gao et~al.(2026)Gao, Hu, Wang, Tao, and Wang}]{openjev2026prdo}
+Gao, Z.; Hu, M.; Wang, J.; Tao, Z.; and Wang, P. 2026.
+\newblock Beyond Outcome Rewards: Post-Rationale Distribution Optimization for
+  Selective Prediction in Reasoning Models.
+\newblock \emph{arXiv preprint arXiv:2609.38850}.
+
+\bibitem[{Gneiting and Raftery(2007)}]{gneiting2007scoring}
+Gneiting, T.; and Raftery, A.~E. 2007.
+\newblock Strictly Proper Scoring Rules, Prediction, and Estimation.
+\newblock \emph{Journal of the American Statistical Association}, 102(477):
+  359--378.
+
+\bibitem[{Guo et~al.(2017)Guo, Pleiss, Sun, and
+  Weinberger}]{guo2017calibration}
+Guo, C.; Pleiss, G.; Sun, Y.; and Weinberger, K.~Q. 2017.
+\newblock On Calibration of Modern Neural Networks.
+\newblock In \emph{International Conference on Machine Learning}.
+
+\bibitem[{Guo et~al.(2026)Guo, Liu, Deng, Li, Zhao, Wu, Chen, Zhang, and
+  Zhang}]{justaskjev2026}
+Guo, R.; Liu, Y.; Deng, G.; Li, Y.; Zhao, L.; Wu, Y.; Chen, S.; Zhang, Y.; and
+  Zhang, L.~Y. 2026.
+\newblock Just Ask {J}ev: Reinforcement Learning for Calibrated Decisions as a
+  Zero-Shot Detector of {AI} Alignment Failures.
+\newblock \emph{arXiv preprint arXiv:2609.29429}.
+
+\bibitem[{Leng et~al.(2025)Leng, Huang, Zhu, and Huang}]{leng2025overconf}
+Leng, J.; Huang, C.; Zhu, B.; and Huang, J. 2025.
+\newblock Taming Overconfidence in {LLMs}: Reward Calibration in {RLHF}.
+\newblock In \emph{International Conference on Learning Representations}.
+
+\bibitem[{Liu et~al.(2025)Liu, Yao, Min, Cao, Hou, and Li}]{liu2025rmbench}
+Liu, Y.; Yao, Z.; Min, R.; Cao, Y.; Hou, L.; and Li, J. 2025.
+\newblock {RM}-Bench: Benchmarking Reward Models of Language Models with
+  Subtlety and Style.
+\newblock In \emph{International Conference on Learning Representations}.
+
+\bibitem[{Ouyang et~al.(2022)Ouyang, Wu, Jiang, Almeida, Wainwright, Mishkin,
+  Zhang, Agarwal, Slama, Ray et~al.}]{ouyang2022instructgpt}
+Ouyang, L.; Wu, J.; Jiang, X.; Almeida, D.; Wainwright, C.; Mishkin, P.; Zhang,
+  C.; Agarwal, S.; Slama, K.; Ray, A.; et~al. 2022.
+\newblock Training Language Models to Follow Instructions with Human Feedback.
+\newblock \emph{Advances in Neural Information Processing Systems}, 35.
+
+\bibitem[{Sener and Koltun(2018)}]{sener2018multi}
+Sener, O.; and Koltun, V. 2018.
+\newblock Multi-Task Learning as Multi-Objective Optimization.
+\newblock In \emph{Advances in Neural Information Processing Systems}.
+
+\bibitem[{Skalse et~al.(2022)Skalse, Howe, Krasheninnikov, and
+  Krueger}]{skalse2022reward}
+Skalse, J.; Howe, N.; Krasheninnikov, D.; and Krueger, D. 2022.
+\newblock Defining and Characterizing Reward Gaming.
+\newblock In \emph{Advances in Neural Information Processing Systems}.
+
+\bibitem[{Stiennon et~al.(2020)Stiennon, Ouyang, Wu, Ziegler, Lowe, Voss,
+  Radford, Amodei, and Christiano}]{stiennon2020summarize}
+Stiennon, N.; Ouyang, L.; Wu, J.; Ziegler, D.; Lowe, R.; Voss, C.; Radford, A.;
+  Amodei, D.; and Christiano, P.~F. 2020.
+\newblock Learning to Summarize with Human Feedback.
+\newblock \emph{Advances in Neural Information Processing Systems}, 33.
+
+\bibitem[{{TypeSafe AI}(2026)}]{typesafe2026jev}
+{TypeSafe AI}. 2026.
+\newblock Introducing System One Models and {J}ev.
+\newblock Technical blog.
+\newblock Reinforcement Learning for Calibrated Decisions (RLCD). Method
+  details not published.
+
+\bibitem[{Wang, Donoway, and Murfet(2026)}]{wang2026patterning}
+Wang, G.; Donoway, E.; and Murfet, D. 2026.
+\newblock Patterning in Practice: Debiasing Reward Models with
+  Susceptibilities.
+\newblock \emph{arXiv preprint arXiv:2609.00699}.
+
+\bibitem[{Yu et~al.(2020)Yu, Kumar, Gupta, Levine, Hausman, and
+  Finn}]{yu2020gradient}
+Yu, T.; Kumar, S.; Gupta, A.; Levine, S.; Hausman, K.; and Finn, C. 2020.
+\newblock Gradient Surgery for Multi-Task Learning.
+\newblock In \emph{Advances in Neural Information Processing Systems}.
+
+\bibitem[{Zheng et~al.(2023)Zheng, Chiang, Sheng, Zhuang, Wu, Zhuang, Lin, Li,
+  Li, Xing et~al.}]{zheng2023judge}
+Zheng, L.; Chiang, W.-L.; Sheng, Y.; Zhuang, S.; Wu, Z.; Zhuang, Y.; Lin, Z.;
+  Li, Z.; Li, D.; Xing, E.; et~al. 2023.
+\newblock Judging {LLM}-as-a-Judge with {MT}-Bench and Chatbot Arena.
+\newblock In \emph{Advances in Neural Information Processing Systems}.
+
+\bibitem[{Zhu et~al.(2025)Zhu, Tan, Chen, Sennrich, Wang, Zhang, and
+  Hu}]{zhu2025charm}
+Zhu, X.; Tan, C.; Chen, P.; Sennrich, R.; Wang, H.; Zhang, Y.; and Hu, H. 2025.
+\newblock {CHARM}: Calibrating Reward Models with Chatbot Arena Scores.
+\newblock \emph{arXiv preprint arXiv:2504.10045}.
+
+\end{thebibliography}

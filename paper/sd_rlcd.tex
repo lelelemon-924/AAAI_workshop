@@ -1,0 +1,273 @@
+\documentclass[letterpaper]{article} % DO NOT CHANGE THIS
+\usepackage[submission]{aaai2027} % DO NOT CHANGE THIS
+\usepackage[hyphens]{url} % DO NOT CHANGE THIS
+\usepackage{graphicx} % DO NOT CHANGE THIS
+\urlstyle{rm} % DO NOT CHANGE THIS
+\def\UrlFont{\rm} % DO NOT CHANGE THIS
+\usepackage{natbib} % DO NOT CHANGE THIS AND DO NOT ADD ANY OPTIONS TO IT
+\usepackage{caption} % DO NOT CHANGE THIS AND DO NOT ADD ANY OPTIONS TO IT
+\frenchspacing % DO NOT CHANGE THIS
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+
+\pdfinfo{
+/TemplateVersion (2027.1)
+}
+
+\setcounter{secnumdepth}{2}
+
+\title{Calibration Is Not Style-Robustness:\\ Constrained Two-Objective RLCD}
+
+\author{Anonymous Submission}
+\affiliations{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Trustworthy automation needs probabilities that stay about content when style and correctness conflict, yet reward models and single-score alignment routinely prefer length, markdown, and other stylistic cues over substance.
+We treat content reliability and style awareness as two competing objectives for calibrated decision models.
+Style-CalibBench pairs correct and incorrect answers with concise, detailed, and markdown styles and scores each answer with a typed yes/no question.
+Low average calibration error is compatible with ranking a decorated wrong answer above a plain correct one.
+Style-Decoupled RLCD (SD-RLCD) trains separate content and style heads with proper scores, then enforces a stop-gradient hard constraint so the style loss cannot move the content readout.
+Linear scalarizations of the same losses improve the hard pair only by sacrificing accuracy; the constraint is the knee of that accuracy--robustness tradeoff.
+On a 1.5B model, hard accuracy rises from 0.54 to 0.68 and markdown ECE falls from 0.17 to 0.10, while content accuracy stays with content-only fine-tuning; a 0.5B rerun preserves the ordering.
+\end{abstract}
+
+\section{Introduction}
+Automation-facing decision models emit typed probabilities that a program can branch on: one shared state, several questions, and no free-form generation \citep{typesafe2026jev}.
+Reinforcement learning for calibrated decisions (RLCD) fits those probabilities to empirical accuracy with a proper scoring rule \citep{guo2017calibration,openjev2026prdo}.
+The missing check is whether a calibrated score remains a \emph{content} probability once style and correctness point in opposite directions.
+
+Alignment scores used for chat models are not probabilities of correctness.
+Reward models prefer longer, more formatted, and more sycophantic answers \citep{liu2025rmbench,bharadwaj2026flattery}, and policies trained against them copy the shortcut \citep{skalse2022reward}.
+Calibrated RLCD can still latch onto the same cues whenever style predicts the training label \citep{justaskjev2026,deusser2026jevbench}.
+Content accuracy and style robustness are therefore a two-objective problem: a single scalar mixes them, while a hard constraint can protect the deployment score.
+
+Figure~\ref{fig:grid} summarizes the problem, method, and objective.
+Our contributions are:
+\begin{itemize}
+\item \textbf{Finding.} Letter-logit readouts and single-head RLCD can be calibrated on average and still assign higher confidence to a decorated wrong answer than to a plain correct one.
+\item \textbf{Benchmark.} Style-CalibBench crosses content labels with controlled styles and scores them with decision-native questions.
+\item \textbf{Method.} Content and style are separate proper-scoring objectives, optimized lexicographically: a stop-gradient hard constraint keeps style off the content readout, and linear scalarization does not reach the same knee of the accuracy--hard-accuracy front.
+\item \textbf{Evidence.} On 265 test prompts the constraint raises hard accuracy from 0.536 to 0.683 and cuts markdown ECE from 0.171 to 0.104, without taking accuracy from content-only fine-tuning. A 0.5B rerun preserves the ordering.
+\end{itemize}
+
+\section{Background}
+\paragraph{Preference scores.}
+RLHF fits a reward model to pairwise comparisons and optimizes a policy against that score \citep{stiennon2020summarize,ouyang2022instructgpt}.
+Nothing in the Bradley--Terry objective penalizes a preference for length or markdown.
+On RM-Bench, strong reward models fall to about chance when a subtle content error is written in a more elaborate style \citep{liu2025rmbench}.
+Counterfactual edits for length, structure, jargon, sycophancy, and vagueness produce the same skew \citep{bharadwaj2026flattery}.
+Reweighting, feature steering, and arena calibration all still return one scalar, so substance and style remain one number.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/grid.pdf}
+\caption{(a)~Style-CalibBench crosses content labels with three styles; the hard probe asks whether $p_c$ ranks a concise correct answer above a markdown incorrect one.
+(b)~SD-RLCD trains a content head $u_c$ and a style head $u_s$ with proper scores in two stages; a stop-gradient blocks $L_s$ from the shared trunk, accept/defer uses only $p_c$, and $u_s$ is reported but not gated.
+(c)~Linear scalarizations of $L_c$ and $L_s$ (gray, labeled by $\lambda$) trace an accuracy--hard-accuracy front. The shaded region is dominated by the constrained run; content-only SFT and the variant without stop-gradient each give up one axis.}
+\label{fig:grid}
+\end{figure*}
+
+\paragraph{Typed decisions.}
+A typed request holds one state and several questions: a binary question returns $P(\text{yes})$, a choice returns a distribution over a declared option set, and a score returns a distribution over rubric levels.
+Open readouts obtain the same interface from option-letter logits in one forward pass.
+A strictly proper score, such as Brier or log score, is maximized only by reporting the true distribution \citep{brier1950verification,gneiting2007scoring}.
+RLCD applies that score to the committed distribution and improves selective prediction over outcome rewards \citep{openjev2026prdo}.
+The score does not say which features the distribution may use.
+If markdown predicts the training label, a calibrated model can be calibrated to markdown.
+
+\paragraph{Observation.}
+Let the input contain a style bit \(s\), and suppose the training distribution satisfies \(P(y{=}1 \mid s{=}\text{markdown}) > P(y{=}1 \mid s{=}\text{concise})\).
+A strictly proper score on a single distribution \(u\) is maximized only at the conditional \(u(x,s)=P(y{=}1 \mid x,s)\) \citep{gneiting2007scoring}.
+That conditional may depend on \(s\).
+The quantity a grader should use, \(P(y{=}1 \mid x)\) after style is ignored, is a different function.
+Low ECE on the mixture is therefore compatible with high ECE inside the markdown slice.
+A second loss is not enough to remove the dependence: any shared trunk that receives gradients from both losses can still trade one for the other.
+The style loss has to be kept off the content readout.
+
+\section{Style-CalibBench}
+Each item is a prompt, a response, a content label $y_c\in\{0,1\}$, and a style in $\{\text{concise},\text{detailed},\text{markdown}\}$.
+RM-Bench already stores a correct and an incorrect response in each of those styles \citep{liu2025rmbench}.
+We expand all 1,327 prompts into six instances that share a pair id.
+A hash of the prompt (seed 20261109) assigns 929 prompts to train, 133 to calibration, and 265 to test.
+
+The content question is binary: is the response substantively correct, ignoring formatting, length, and tone?
+The style question is a 1--5 score against a declared target style, and it is told to ignore factual correctness.
+Both questions see the same state.
+The hard probe, one comparison per pair, is
+\begin{equation}
+p_c(x, r_{\text{correct, concise}}) > p_c(x, r_{\text{wrong, markdown}}).
+\label{eq:hard}
+\end{equation}
+Style-flip rate is the fraction of $(\text{pair}, y_c)$ groups whose thresholded content decision changes across styles.
+Confidence inflation is the gap in $p_c$ between markdown and concise answers when $y_c{=}0$.
+We also report accuracy, AUROC, Brier score, ECE overall and within each style, and selective coverage at 5\% error.
+The style head is scored by quadratic weighted kappa against the gold style level.
+
+\section{SD-RLCD}
+Let $u_c\in\Delta_2$ be the softmax over the yes and no tokens, and let $u_s\in\Delta_5$ be the softmax over rubric levels.
+Write $L_c=-J_c$ and $L_s=-J_s$ for the negative Brier scores of the two heads, with
+\begin{equation}
+J_c(u_c, y_c) = 1 - \|u_c - e_{y_c}\|^2.
+\label{eq:brier}
+\end{equation}
+Two combinations of the same losses are trained.
+
+\paragraph{Scalarization.}
+The shared trunk and both heads minimize $\lambda L_c + (1-\lambda) L_s$.
+Every $\lambda\in(0,1)$ sends style gradients into the features that produce $u_c$, tracing a scalarized front between content accuracy and style robustness.
+Weighted sums are also known to miss points on non-convex fronts \citep{das1997closer}.
+The observation above says those gradients can buy a better hard pair by spending content accuracy.
+
+\paragraph{Constraint.}
+Write $\theta$ for the shared trunk and $\phi_c,\phi_s$ for the two heads.
+SD-RLCD solves the lexicographic problem
+\begin{equation}
+(\theta^\star,\phi_c^\star)\in\arg\min_{\theta,\phi_c} L_c,
+\qquad
+\phi_s^\star\in\arg\min_{\phi_s} L_s(\theta^\star,\phi_s),
+\label{eq:lex}
+\end{equation}
+so content has strict priority and style is optimized only inside the set that leaves $u_c$ unchanged.
+Stage~A solves the first problem on the trunk and the content head.
+Stage~B solves the second on the style head, with a stop-gradient that blocks $L_s$ from $\theta$.
+Unlike a weighted sum, Eq.~\eqref{eq:lex} needs no $\lambda$ and cannot buy style fit with content accuracy; the style head may improve, but it cannot rewrite $u_c$.
+At inference the system accepts an instance when $p_c \ge t_c$, with $t_c$ fit on the calibration split.
+The style probability is returned to the caller and is not added into $p_c$.
+
+\paragraph{Setup.}
+The main model is Qwen2.5-1.5B-Instruct.\footnote{Split hash seed 20261109; three training seeds; LoRA $r{=}16$; code and regeneration prompts to be released with the camera-ready.}
+The same recipe is rerun on Qwen2.5-0.5B-Instruct.
+LoRA rank is 16, the learning rate is $2\times 10^{-5}$, the length is 1024, Stage~A runs for two epochs, Stage~B for one, and every trained entry is a mean over three seeds.
+Readout tokens are single-token yes/no and the digits 1--5.
+The scalar baseline is a frozen Skywork-Reward-Llama-3.1-8B reward model, converted to a probability by temperature scaling on the calibration split.
+Other baselines are a frozen letter-logit readout of the 1.5B model, content-only supervised fine-tuning, and single-head RLCD, the $\lambda{=}1$ endpoint.
+
+\section{Experiments}
+Every decision model sees the same binary content question.
+Trained entries are means over three seeds.
+Hard accuracy is one comparison per test prompt ($n{=}265$).
+Error bars in Figure~\ref{fig:results} are prompt-level bootstrap standard errors, so frozen and trained models are on the same interval.
+
+\begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{3.2pt}
+\begin{tabular}{lccccc}
+\toprule
+Method & Acc & Hard & ECE & MD & Flip \\
+\midrule
+Readout & 0.541 & 0.358 & 0.248 & 0.331 & 0.528 \\
+Scalar RM & 0.614 & 0.412 & 0.221 & 0.294 & 0.471 \\
+SFT & \textbf{0.748} & 0.560 & 0.168 & 0.226 & 0.342 \\
+RLCD & 0.731 & 0.536 & \textbf{0.089} & 0.171 & 0.287 \\
+SD-RLCD & 0.739 & \textbf{0.683} & 0.096 & \textbf{0.104} & \textbf{0.146} \\
+\midrule
+\quad w/o stop-grad & 0.721 & 0.649 & 0.112 & 0.139 & 0.188 \\
+\quad log score & 0.734 & 0.667 & 0.094 & 0.111 & 0.153 \\
+\bottomrule
+\end{tabular}
+\caption{Test results. MD is ECE on markdown answers. Flip is the style-flip rate. Bold is the best value among the five main rows. Selective coverage at 5\% error is 0.376 for RLCD and 0.394 for SD-RLCD. The last two rows are ablations of SD-RLCD.}
+\label{tab:main}
+\end{table}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.98\textwidth]{figures/results.pdf}
+\caption{(a)~Hard accuracy when the concise correct answer is compared with the markdown incorrect answer; dashed line is chance, intervals are prompt-level bootstrap standard errors. (b)~Overall against markdown ECE: single-head RLCD is the best average calibrator and still roughly doubles its error on markdown, while SD-RLCD's two bars match. (c)~Hard accuracy of single-head RLCD (hollow) and the constraint (filled) by domain on the 1.5B model ($n{=}62,54,58,48,43$), on the 0.5B rerun, and on a held-out length swap that was not a training style.}
+\label{fig:results}
+\end{figure*}
+
+\paragraph{A calibrated score can still track style.}
+The readout and the reward model land below chance on the hard probe (0.358 and 0.412).
+Content-only fine-tuning has the best accuracy (0.748) and only 0.560 hard accuracy.
+Single-head RLCD has the best overall ECE (0.089) and the best selective coverage of the single-distribution models, but its markdown ECE is 0.171.
+Confidence inflation on wrong answers stays positive after that training: $+0.241$ for the readout, $+0.186$ for the reward model, $+0.117$ for SFT, and $+0.084$ for RLCD.
+Proper scoring makes the average bin honest.
+It does not remove markdown from the features that move $p_c$.
+
+\paragraph{What separating the heads changes.}
+SD-RLCD does not take accuracy from SFT (0.739 versus 0.748) and does not take overall ECE from RLCD (0.096 versus 0.089).
+It is the model for which those two facts stop predicting the hard pair.
+Hard accuracy rises from 0.536 to 0.683, markdown ECE falls from 0.171 to 0.104, and the flip rate falls from 0.287 to 0.146.
+Content AUROC stays flat: 0.816, 0.809, and 0.811 for SFT, RLCD, and SD-RLCD.
+The style head is not unusually accurate (quadratic weighted kappa 0.74).
+Given a wrong answer, the correlation of $p_c$ with a markdown indicator falls from 0.24 to 0.06.
+The hard-accuracy gain is positive in every domain (Figure~\ref{fig:results}c).
+On one math pair, RLCD scores the markdown wrong answer at 0.81 and the concise correct answer at 0.62; the constraint scores them at 0.34 and 0.78.
+
+\paragraph{Ablations.}
+Without the stop-gradient, the style loss moves the content pathway and hard accuracy drops from 0.683 to 0.649 (Table~\ref{tab:main}).
+Swapping Brier for log score in Stage~A leaves the same ordering.
+Using the style head as a second accept gate, on top of $t_c$, cuts coverage at 5\% error from 0.394 to 0.331.
+The style head is a separate objective.
+It is not a second vote on whether the answer is true.
+
+\paragraph{Scalarization is not the constraint.}
+Table~\ref{tab:lambda} varies $\lambda$ on the 1.5B model and reports the accuracy--hard-accuracy front under linear scalarization.
+Moving $\lambda$ from 1 to 0.25 raises hard accuracy from 0.536 to 0.659 and drops accuracy from 0.731 to 0.701.
+No scalarization point matches the constraint on both axes: the constraint is the knee, keeping accuracy at 0.739 (next to content-only SFT) and hard accuracy at 0.683.
+Style kappa is highest at $\lambda{=}0.25$ (0.76) and lower under the constraint (0.74), the expected cost of not letting style move the trunk.
+
+\begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lcccc}
+\toprule
+Objective & Acc & Hard & MD & $\kappa$ \\
+\midrule
+$\lambda{=}1$ (RLCD) & 0.731 & 0.536 & 0.171 & -- \\
+$\lambda{=}0.75$ & 0.736 & 0.589 & 0.155 & 0.61 \\
+$\lambda{=}0.50$ & 0.722 & 0.638 & 0.131 & 0.70 \\
+$\lambda{=}0.25$ & 0.701 & 0.659 & 0.122 & 0.76 \\
+Constraint & \textbf{0.739} & \textbf{0.683} & \textbf{0.104} & 0.74 \\
+\bottomrule
+\end{tabular}
+\caption{Linear scalarization versus the stop-gradient constraint on the 1.5B model. $\kappa$ is quadratic weighted kappa of the style head. Bold marks the knee: best accuracy, hard accuracy, and markdown ECE together. No $\lambda$ wins both accuracy and the hard pair.}
+\label{tab:lambda}
+\end{table}
+
+\paragraph{Where the gain shows up.}
+Figure~\ref{fig:results}c breaks the hard pair into slices.
+The constraint improves every domain.
+The smallest gain is math, from 0.466 to 0.603, which is still above chance, and the largest is code, from 0.611 to 0.759.
+On the 0.5B replication the constraint raises hard accuracy from 0.501 to 0.629 and leaves accuracy at 0.706 against 0.711 for content-only training, so the ordering is not an artifact of the 1.5B run.
+A length swap that was not a training style, long wrong against short right, moves hard accuracy from 0.544 to 0.618.
+The gain transfers, and it is smaller than the markdown gain the style head was trained on.
+
+\section{Related Work}
+Reward calibration inside RLHF reduces verbalized overconfidence by editing the reward model or the advantage \citep{leng2025overconf}.
+CHARM rescales reward-model scores with arena rankings \citep{zhu2025charm}.
+Patterning reweights preference pairs by how much they move a benchmark loss \citep{wang2026patterning}.
+Selective judging decides when a pairwise verdict is trustworthy enough to keep \citep{zheng2023judge}.
+All of these methods still optimize or filter one preference scalar.
+Multi-task learning treats shared-trunk losses as a multi-objective problem and resolves gradient conflict by finding a common descent direction \citep{sener2018multi} or projecting conflicting gradients \citep{yu2020gradient}; adversarial gradient reversal instead removes a nuisance factor from the representation \citep{ganin2015unsupervised}.
+SD-RLCD takes the lexicographic end of this spectrum: the auxiliary objective never reaches the shared trunk, so the deployment score is fixed to the content head.
+Prior calibrated-decision evaluations \citep{justaskjev2026,deusser2026jevbench} omit the style$\times$content conflict that Style-CalibBench isolates.
+
+\section{Limitations and Conclusion}
+Both trained models are at most 1.5B parameters, the styles are RM-Bench rewrites rather than human edits, and proprietary closed decision APIs are outside this comparison.
+Math is the weakest domain, and a held-out length swap transfers only part of the markdown gain.
+Gradient-conflict methods such as MGDA and PCGrad, and gradient reversal on a style adversary, are natural baselines that this short paper does not run.
+Annotator disagreement, as a soft content target, is left for a longer paper.
+Inside those limits the result is specific.
+Low ECE does not mean the probability is about content.
+Treating style as a second objective, and protecting the content readout with a hard constraint, is what makes the deployed number refer to the quantity the program branches on.
+
+\section*{Ethical Statement}
+Style-CalibBench is derived from a public benchmark.
+We release split hashes and regeneration prompts rather than text whose license forbids redistribution.
+A style target can suppress legitimate variation if a caller treats it as a quality score.
+The style probability is not a measure of truth.
+
+\section*{AI Use Statement}
+Language models assisted with prose editing and evaluation-code scaffolding.
+All reported numbers, figures, and claims come from logged experimental runs and were verified by the authors.
+
+\bibliography{sd_rlcd}
+
+\end{document}
