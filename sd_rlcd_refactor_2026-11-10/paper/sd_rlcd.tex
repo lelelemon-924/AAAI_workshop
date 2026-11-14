@@ -1,0 +1,248 @@
+\documentclass[letterpaper]{article} % DO NOT CHANGE THIS
+\usepackage[submission]{aaai2027} % DO NOT CHANGE THIS
+\usepackage[hyphens]{url} % DO NOT CHANGE THIS
+\usepackage{graphicx} % DO NOT CHANGE THIS
+\urlstyle{rm} % DO NOT CHANGE THIS
+\def\UrlFont{\rm} % DO NOT CHANGE THIS
+\usepackage{natbib} % DO NOT CHANGE THIS AND DO NOT ADD ANY OPTIONS TO IT
+\usepackage{caption} % DO NOT CHANGE THIS AND DO NOT ADD ANY OPTIONS TO IT
+\frenchspacing % DO NOT CHANGE THIS
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+
+\pdfinfo{
+/TemplateVersion (2027.1)
+}
+
+\setcounter{secnumdepth}{2}
+
+\title{Calibration Is Not Style Robustness:\\A Decision-Native Audit of Style-Conditional Reliability}
+
+\author{Anonymous Submission}
+\affiliations{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Typed decision models expose probabilities that downstream systems use to accept, defer, or route an answer. Good average calibration, however, does not guarantee that these probabilities remain grounded in content when presentation style changes. We adapt RM-Bench into a decision-native evaluation protocol, Style-CalibBench, which evaluates binary content probabilities across concise, detailed, and markdown variants. We distinguish a single extreme-corner comparison---a concise correct answer against a markdown incorrect answer---from the standard RM-Bench Hard metric, and report calibration both overall and by style. The current experimental table reports that single-head RLCD has lower overall ECE than the two-head variant (0.089 versus 0.096), while the two-head variant has higher extreme-corner accuracy (0.683 versus 0.536) and lower markdown ECE (0.104 versus 0.171). These are descriptive comparisons, not evidence that the style-head update caused the content-side gain: under the stated training procedure, Stage B freezes the shared trunk and content head, so it cannot change the content probabilities. A matched Stage-A-only control is required to identify the source of the between-model difference. Our supported conclusion is narrower: average calibration and counterfactual style robustness are distinct properties and should be evaluated separately.
+\end{abstract}
+
+\section{Introduction}
+
+Automation-facing models increasingly return typed decisions rather than free-form answers. A binary question may return $P(\mathrm{yes})$, and a downstream program may use that probability to accept an answer, defer to a human, or invoke another system. In this setting, calibration matters because the probability is operational, not merely explanatory.
+
+Calibration is nevertheless an incomplete reliability criterion. A model can be calibrated on an aggregate test distribution while relying on presentation cues that correlate with labels. In particular, reward models and preference-trained systems can prefer longer or more heavily formatted responses even when their substance is weaker \citep{liu2025rmbench,bharadwaj2026flattery}. Proper scoring rules encourage honest probabilities for the observed conditional distribution, but do not specify which input features the model should use \citep{brier1950verification,gneiting2007scoring}.
+
+We study whether a typed content probability remains stable under controlled changes in answer style. Our evaluation adapts RM-Bench, which already provides preferred and dispreferred responses in multiple styles \citep{liu2025rmbench}. We convert each response into a binary content-decision instance and compare calibration, within-style calibration, and cross-style ranking. We call this protocol \emph{Style-CalibBench}; it is a decision-native evaluation protocol over an existing benchmark, not a newly collected independent corpus.
+
+A key distinction in our analysis is between the extreme-corner probe and the standard RM-Bench Hard metric. The former compares only a concise preferred answer with a markdown dispreferred answer. It is useful as a targeted stress test, but it must not be reported as the official RM-Bench Hard score, which aggregates three cross-style comparisons.
+
+We also examine a two-head training recipe with a content head and an auxiliary style head. The stated stop-gradient design deliberately prevents the style loss from updating the shared trunk. This provides a clean separation between the two heads, but it has an important implication: the style-head stage cannot improve the content head. We therefore treat comparisons between this recipe and single-head baselines as descriptive until a matched Stage-A-only control is reported.
+
+Our contributions are:
+\begin{itemize}
+    \item \textbf{Decision-native protocol.} We adapt an existing style-sensitive reward benchmark to typed binary content decisions and evaluate probabilities rather than only scalar preference scores.
+    \item \textbf{Metric separation.} We define an extreme-corner accuracy probe and distinguish it from standard RM-Bench Easy/Normal/Hard reporting. We also separate aggregate calibration from style-conditional calibration and style-flip behavior.
+    \item \textbf{Empirical audit.} The reported results illustrate that a model with strong aggregate calibration can remain sensitive to presentation style. We explicitly delimit what the current two-stage training design can and cannot establish.
+\end{itemize}
+
+\section{Related Work}
+
+\paragraph{Style bias in preference and reward models.}
+RM-Bench evaluates whether reward models prefer substantively better answers when style cues conflict with answer quality \citep{liu2025rmbench}. Counterfactual studies further document sensitivity to length, structure, jargon, sycophancy, and vagueness \citep{bharadwaj2026flattery}. Methods such as preference reweighting and reward calibration intervene at different points in the training or scoring pipeline \citep{wang2026patterning,zhu2025charm,leng2025overconf}. These approaches are related in motivation, but they do not share an identical objective or intervention point; direct comparisons are needed before making claims of superiority.
+
+\paragraph{Calibration and typed decisions.}
+Modern neural networks can be miscalibrated even when they are accurate \citep{guo2017calibration}. Strictly proper scoring rules, including the Brier and logarithmic scores, provide principled objectives for probabilistic prediction \citep{brier1950verification,gneiting2007scoring}. Recent work studies calibrated decisions and typed probability interfaces \citep{justaskjev2026,openjev2026prdo,deusser2026jevbench,typesafe2026jev}. Our focus is complementary: whether a content probability remains reliable under counterfactual presentation changes.
+
+\paragraph{Multi-task and constrained optimization.}
+Multi-task learning studies how shared parameters should accommodate competing objectives \citep{sener2018multi,yu2020gradient}. Adversarial representation learning can suppress nuisance information through gradient reversal \citep{ganin2015unsupervised}. Our current stop-gradient variant is more restrictive than these shared-parameter methods: its auxiliary style loss does not update the shared content representation. We do not claim that this frozen-head design is a general Pareto optimizer.
+
+\section{Problem and Evaluation Protocol}
+
+\subsection{Decision task}
+
+Each evaluation instance consists of a prompt $x$, a response $r$, a binary task-appropriate content label $y_c\in\{0,1\}$, and a style label $s\in\{\mathrm{concise},\mathrm{detailed},\mathrm{markdown}\}$. The content question asks whether the response is substantively appropriate, ignoring formatting and verbosity. For safety examples, task-appropriate content includes both appropriate compliance and appropriate refusal; it is not synonymous with factual correctness.
+
+The benchmark source already provides preferred and dispreferred responses across styles \citep{liu2025rmbench}. We expand each of the 1,327 prompts into six response instances: a preferred and a dispreferred response in each of the three styles. All instances derived from one prompt share a pair identifier. We assign prompts, not individual response instances, to splits using the stated hash procedure (seed 20261109): 929 train prompts, 133 calibration prompts, and 265 test prompts. This grouping prevents variants of one prompt from crossing split boundaries.
+
+\subsection{Metrics}
+
+Let $p_c(x,r)$ denote the model's probability that response $r$ is task-appropriate for prompt $x$.
+
+\paragraph{Overall and style-conditional calibration.}
+We report accuracy, AUROC, Brier score, and expected calibration error (ECE). We additionally compute ECE separately within each style. Markdown ECE is denoted $\mathrm{ECE}_{\mathrm{md}}$. ECE depends on the binning rule; the implementation should therefore state the number and construction of bins and include a sensitivity analysis or an adaptive-bin estimate.
+
+\paragraph{Extreme-Corner Accuracy (ECA).}
+The targeted stress test compares the concise preferred answer with the markdown dispreferred answer:
+\begin{equation}
+\mathrm{ECA}
+=
+\frac{1}{N}\sum_{i=1}^{N}
+\mathbb{1}\left[
+p_c(x_i,r^{+}_{i,\mathrm{concise}})
+>
+p_c(x_i,r^{-}_{i,\mathrm{markdown}})
+\right].
+\label{eq:eca}
+\end{equation}
+ECA is one deliberately difficult corner of the style-substance matrix. It is not the standard RM-Bench Hard metric and should not be labeled simply as ``Hard Accuracy.''
+
+\paragraph{Standard RM-Bench reporting.}
+For comparability, the standard RM-Bench Easy, Normal, and Hard metrics should be recomputed using the official evaluation protocol. In particular, standard Hard aggregates the three cross-style comparisons in which the preferred answer is less elaborately styled than the dispreferred answer: concise versus detailed, concise versus markdown, and detailed versus markdown. We keep ECA as an additional stress test rather than substituting it for the standard metric.
+
+\paragraph{Style-flip rate and confidence inflation.}
+Style-flip rate is the fraction of prompt/label groups for which the thresholded content decision changes across style variants. Confidence inflation is the mean difference between $p_c$ on markdown and concise dispreferred responses. These metrics capture decision instability and style-linked confidence, respectively.
+
+\paragraph{Selective prediction.}
+A threshold $t_c$ is selected using the calibration split only. At test time, a response is accepted when $p_c\geq t_c$. Coverage and empirical selective risk are then measured on the held-out test split. A target error level used to select a threshold must not be described as a statistical risk guarantee unless a valid risk-control procedure and its assumptions are specified.
+
+\section{Models and Training Procedures}
+
+\subsection{Compared systems}
+
+We retain the model families in the current experimental setup:
+\begin{itemize}
+    \item \textbf{Readout:} an untrained option-letter probability readout from the base model.
+    \item \textbf{Scalar reward model:} a frozen reward model whose scalar scores are converted to probabilities using temperature scaling on the calibration split.
+    \item \textbf{SFT:} content-only supervised fine-tuning.
+    \item \textbf{Single-head RLCD:} a single content distribution trained with a proper scoring objective.
+    \item \textbf{Two-head variant:} a content head and an auxiliary style head trained in two stages, as described below.
+\end{itemize}
+
+The main backbone is Qwen2.5-1.5B-Instruct, with a reported rerun on Qwen2.5-0.5B-Instruct. The current setup uses LoRA rank 16, learning rate $2\times10^{-5}$, maximum sequence length 1024, two epochs for Stage A, and one epoch for Stage B. Reported trained results are means over three random seeds. The final paper should provide the exact model revisions, data manifests, optimizer details, and run identifiers.
+
+\subsection{Proper-scoring content objective}
+
+Let $u_c\in\Delta_2$ be the softmax distribution over the yes/no readout tokens, and let $e_{y_c}$ be the one-hot target. The Brier score is
+\begin{equation}
+J_c(u_c,y_c)=1-\|u_c-e_{y_c}\|_2^2,
+\qquad
+L_c=-\mathbb{E}[J_c(u_c,y_c)].
+\label{eq:content-brier}
+\end{equation}
+A corresponding style head predicts a distribution $u_s\in\Delta_5$ over five declared style-match levels, with a separate proper-scoring objective $L_s$.
+
+\subsection{Two-stage frozen-style-head variant}
+
+Let $\theta$ denote the shared trunk and $\phi_c,\phi_s$ the content and style heads. Stage A optimizes the content objective:
+\begin{equation}
+(\theta_A,\phi_{c,A})
+\in
+\arg\min_{\theta,\phi_c} L_c(\theta,\phi_c).
+\label{eq:stage-a}
+\end{equation}
+Stage B freezes the shared representation for the style task:
+\begin{equation}
+\phi_{s,B}
+\in
+\arg\min_{\phi_s}
+L_s(\operatorname{stopgrad}(h_{\theta_A}(x)),\phi_s).
+\label{eq:stage-b}
+\end{equation}
+Consequently,
+\begin{equation}
+\theta_B=\theta_A,\qquad
+\phi_{c,B}=\phi_{c,A},\qquad
+p_c^{B}(x,r)=p_c^{A}(x,r)
+\label{eq:freeze-identity}
+\end{equation}
+up to deterministic inference and numerical implementation details. This identity is a direct consequence of the stated computation graph, not an empirical hypothesis.
+
+This design makes the style head an auxiliary prediction head. It prevents the style loss from changing the content representation, but it also means that Stage B cannot be the cause of any improvement in content accuracy or ECA. A comparison between the final two-head model and single-head RLCD therefore does not isolate the effect of style-head training. A matched Stage-A-only dual-head control, using the same initialization, data order, optimizer, and random seeds, is necessary. If the Stage-A-only and final two-head content logits differ, the implementation or checkpointing procedure must be audited.
+
+\paragraph{Inference.}
+The system accepts an instance when $p_c\geq t_c$, where $t_c$ is selected on the calibration split. The style distribution is returned as a separate diagnostic and is not combined with the content probability.
+
+\section{Results}
+
+\subsection{Main comparison}
+
+Table~\ref{tab:main} reproduces the point estimates in the current manuscript. The column previously called ``Hard'' is renamed ECA because it evaluates only the extreme concise-correct versus markdown-incorrect comparison.
+
+\begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{3.2pt}
+\begin{tabular}{lccccc}
+\toprule
+Method & Acc & ECA & ECE & MD-ECE & Flip \\
+\midrule
+Readout & 0.541 & 0.358 & 0.248 & 0.331 & 0.528 \\
+Scalar RM & 0.614 & 0.412 & 0.221 & 0.294 & 0.471 \\
+SFT & \textbf{0.748} & 0.560 & 0.168 & 0.226 & 0.342 \\
+RLCD & 0.731 & 0.536 & \textbf{0.089} & 0.171 & 0.287 \\
+Two-head variant & 0.739 & \textbf{0.683} & 0.096 & \textbf{0.104} & \textbf{0.146} \\
+\midrule
+\quad w/o stop-gradient & 0.721 & 0.649 & 0.112 & 0.139 & 0.188 \\
+\quad log-score variant & 0.734 & 0.667 & 0.094 & 0.111 & 0.153 \\
+\bottomrule
+\end{tabular}
+\caption{Reported test point estimates. ECA is the single extreme-corner comparison defined in Eq.~\ref{eq:eca}; it is not standard RM-Bench Hard Accuracy. MD-ECE is ECE on markdown instances.}
+\label{tab:main}
+\end{table}
+
+Single-head RLCD has the lowest reported overall ECE (0.089), yet its markdown ECE is higher (0.171). The two-head variant has a higher reported ECA (0.683 versus 0.536) and lower markdown ECE (0.104 versus 0.171), while its overall ECE is slightly higher (0.096 versus 0.089). These values illustrate why aggregate calibration and style-conditional behavior should be reported separately.
+
+The between-model ECA difference must be interpreted cautiously. Under Eqs.~\ref{eq:stage-a}--\ref{eq:freeze-identity}, Stage B cannot change the content probabilities. Thus the reported difference between the two-head variant and single-head RLCD cannot be attributed to the Stage-B style-head update. It may reflect differences in Stage-A initialization, architecture, data order, optimization, or other implementation details. The current comparison does not identify which explanation is responsible. The matched Stage-A-only control is therefore a required experiment, not an optional ablation.
+
+\subsection{Scalarized variants}
+
+The current manuscript also reports the following scalarized runs. Their second column is ECA, not standard RM-Bench Hard Accuracy.
+
+\begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lcccc}
+\toprule
+Objective & Acc & ECA & MD-ECE & $\kappa$ \\
+\midrule
+$\lambda=1$ (RLCD) & 0.731 & 0.536 & 0.171 & -- \\
+$\lambda=0.75$ & 0.736 & 0.589 & 0.155 & 0.61 \\
+$\lambda=0.50$ & 0.722 & 0.638 & 0.131 & 0.70 \\
+$\lambda=0.25$ & 0.701 & 0.659 & 0.122 & 0.76 \\
+Frozen two-head variant & 0.739 & 0.683 & 0.104 & 0.74 \\
+\bottomrule
+\end{tabular}
+\caption{Reported scalarized variants and the frozen two-head variant. These point estimates do not establish that the frozen variant is a Pareto-optimal solution; the content pathway is not updated by the Stage-B style objective.}
+\label{tab:scalar}
+\end{table}
+
+The scalarized variants show a descriptive trade-off in the reported runs: lower $\lambda$ is associated with higher ECA and lower content accuracy. The frozen two-head variant occupies a different training regime, because its Stage-B style objective does not update the content pathway. It should not be described as a Pareto knee without a matched Stage-A-only control and a clearly specified feasible-set comparison.
+
+\subsection{Scale and held-out style observations}
+
+The current manuscript reports that the Qwen2.5-0.5B rerun raises ECA from 0.501 to 0.629 while content accuracy is 0.706, compared with 0.711 for content-only training. It also reports that a held-out length-swap probe changes ECA from 0.544 to 0.618. These results are useful exploratory observations, but they do not establish cross-family generalization: both model sizes belong to the same Qwen2.5 family, and a single held-out length perturbation does not cover the broader space of tone, jargon, structure, and paraphrase changes.
+
+\section{Limitations and Required Validation}
+
+This study has several limitations that should be addressed before submission.
+
+\begin{itemize}
+    \item \textbf{Matched Stage-A-only control.} The current method definition implies exact equality of content outputs before and after Stage B. The corresponding control and per-example logit identity check are not reported in the current draft.
+    \item \textbf{Standard benchmark metrics.} ECA is a useful targeted probe, but the standard RM-Bench Easy, Normal, and Hard metrics must also be reported using the official implementation.
+    \item \textbf{Statistical uncertainty.} Three seeds and point estimates are insufficient for a strong claim. Report prompt-clustered paired bootstrap confidence intervals, with the prompt as the resampling unit because style variants from one prompt are not independent.
+    \item \textbf{Selective risk.} State the calibration threshold-selection procedure, the observed test risk, coverage, and uncertainty. Do not present a target error rate as a guarantee unless a valid risk-control method is used.
+    \item \textbf{Style labels.} Document the five-level style rubric, annotators, annotation instructions, and inter-annotator agreement. If the levels are mechanically assigned from rewrite categories, describe them as rule-derived labels rather than human judgments.
+    \item \textbf{Semantic preservation.} Concise rewrites can omit qualifications or conditions. Audit a stratified sample for semantic equivalence and report disagreement or exclusion rates.
+    \item \textbf{Baseline coverage.} Counterfactual data augmentation, at least one gradient-conflict baseline (e.g., PCGrad), and a feature-debiasing baseline would make the comparison more informative. We do not claim superiority over methods that have not been run.
+    \item \textbf{Data accounting and licensing.} Publish the exact prompt-level split manifest and per-domain counts. Describe upstream data terms precisely; do not claim redistribution is prohibited unless the applicable dataset and content licenses have been checked.
+\end{itemize}
+
+\section{Conclusion}
+
+Calibration is a property of predicted probabilities under a specified distribution; it does not by itself establish invariance to presentation style. A decision-native evaluation should therefore report aggregate calibration, style-conditional calibration, and counterfactual cross-style ranking separately. The current results are consistent with this distinction. The stated frozen-style-head procedure also imposes a strict causal boundary: Stage B cannot improve the content readout. Establishing a method-level improvement requires a matched Stage-A-only control or a redesigned objective that directly trains cross-style content robustness while constraining content loss.
+
+\section*{Ethical Statement}
+
+Style-CalibBench is derived from a public benchmark. We intend to release split identifiers or hashes, evaluation code, and regeneration instructions, subject to the upstream dataset terms. Raw benchmark text will only be redistributed if the applicable dataset and content licenses permit it. A style score is not a truth score and should not be used as a substitute for content correctness.
+
+\section*{AI Use Statement}
+
+Language models assisted with prose editing and evaluation-code scaffolding. All reported numbers, figures, and claims must be checked against the authors' experiment logs and evaluation scripts before submission.
+
+\bibliography{sd_rlcd}
+
+\end{document}

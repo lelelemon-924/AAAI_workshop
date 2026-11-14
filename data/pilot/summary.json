@@ -1,0 +1,17 @@
+{
+  "source": "synthetic",
+  "n_items": 360,
+  "n_pairs": 60,
+  "splits": {
+    "train": 252,
+    "cal": 36,
+    "test": 72
+  },
+  "domains": [
+    "chat",
+    "code",
+    "math",
+    "safety-refuse",
+    "safety-response"
+  ]
+}

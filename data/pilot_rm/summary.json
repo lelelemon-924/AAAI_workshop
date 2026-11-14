@@ -1,0 +1,17 @@
+{
+  "source": "rmbench",
+  "n_items": 600,
+  "n_pairs": 100,
+  "splits": {
+    "train": 438,
+    "cal": 54,
+    "test": 108
+  },
+  "domains": [
+    "chat",
+    "code",
+    "math",
+    "safety-refuse",
+    "safety-response"
+  ]
+}

@@ -1,4 +1,4 @@
-\begin{thebibliography}{23}
+\begin{thebibliography}{24}
 \providecommand{\natexlab}[1]{#1}
 
 \bibitem[{Angelopoulos et~al.(2024)Angelopoulos, Bates, Fisch, Lei, and
@@ -109,6 +109,11 @@ Liu, Y.; Yao, Z.; Min, R.; Cao, Y.; Hou, L.; and Li, J. 2025.
 Sener, O.; and Koltun, V. 2018.
 \newblock Multi-Task Learning as Multi-Objective Optimization.
 \newblock In \emph{Advances in Neural Information Processing Systems}.
+
+\bibitem[{Sun et~al.(2026)Sun, Yu, Gu, Zhang, and Ye}]{sun2026steerrm}
+Sun, M.; Yu, Z.; Gu, W.; Zhang, S.; and Ye, W. 2026.
+\newblock {SteerRM}: Debiasing Reward Models via Sparse Autoencoders.
+\newblock \emph{arXiv preprint arXiv:2603.12795}.
 
 \bibitem[{{TypeSafe AI}(2026)}]{typesafe2026jev}
 {TypeSafe AI}. 2026.

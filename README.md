@@ -1,8 +1,8 @@
-# SD-RLCD AAAI Workshop Paper
+# CC-RLCD AAAI Workshop Paper
 
 Manuscript sources for the AAAI-27 workshop short paper:
 
-**Calibration Is Not Style-Robustness: Style-Decoupled RLCD for Typed Decisions**
+**Calibration Is Not Style Robustness: Primal–Dual Counterfactual RLCD with Conformal Selective Risk Control**
 
 ## Files
 
